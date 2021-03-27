@@ -1,0 +1,210 @@
+#!/bin/bash
+# Autor: Rafael Ricardo Reyes Sandoval
+# Propósito:  Escanear determinadas IPs e insertar los valores analizados en una base de datos
+
+###############
+## Variables ##
+###############
+
+# Variable que busca los ficheros que cumplan las características de los listados de IPs
+ip_file=$(find /mnt/ -type f -iname "*.txt")
+
+# Puertos a escanear:
+https="443"
+custom_https="8443"
+
+###############
+## Ejecución ##
+###############
+
+
+# Condición que determina si se realizan las tareas de escaneo, dependiendo de si hay ficheros ".txt" que analizar
+if [  $ip_file -z  ]; 
+	# Acción que se realiza en caso de que no haya ningún fichero válido para escanear
+	then
+		# Mensaje informativo del error por el que no se ejecuta ninguna acción
+		echo -e "No se encuentra ningun fichero adecuado para el correcto funcionamiento del sistema.\nPor favor proporcione un fichero correcto e intentelo de nuevo"
+		
+	# Acciones a realizar en caso de tener un fichero válido a escanear.
+	else
+		# Mensaje informativo del escaneo SSL
+		echo "Se procede a realizar el scaneo contra los puertos $https y $custom_https..."
+		# En caso de que sea más de un fichero con la lista de IPs, escaneará todos los ficheros ".txt" con este bucle
+		cat $ip_file|while read ip;
+		do
+			# Proceso de escaneo de las IPs encontradas en los ficheros proporcionados
+			scan_ip=$(nmap --script ssl-enum-ciphers -p $https $ip 2> /dev/null)
+			# Mensaje informativo para que el usuario vea por pantalla las IPs escaneadas
+			echo "IP: $ip ___ Port: $https"
+			# Comprobación que en el escaneo de la IP soporta el SSLv2
+			grep "SSLv2" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte SSLv2
+					then
+						# Variable que da el valor que tendrá SSLv2
+						SSLv2=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte SSLv2
+					else
+						# Variable que da el valor que tendrá SSLv2
+						SSLv2=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el SSLv3
+			grep "SSLv3" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte SSLv3
+					then
+						# Variable que da el valor que tendrá SSLv3
+						SSLv3=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte SSLv3
+					else
+						# Variable que da el valor que tendrá SSLv3
+						SSLv3=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.0
+			grep "TLSv1.0" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.0
+					then
+						# Variable que da el valor que tendrá TLSv1.0
+						TLSv1_0=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporta TLSv1.0
+					else
+						# Variable que da el valor que tendrá TLSv1.0
+						TLSv1_0=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.1
+			grep "TLSv1.1" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.1
+					then
+						# Variable que da el valor que tendrá TLSv1.1
+						TLSv1_1=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.1
+					else
+						# Variable que da el valor que tendrá TLSv1.1
+						TLSv1_1=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.2
+			grep "TLSv1.2" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.2
+					then
+						# Variable que da el valor que tendrá TLSv1.2
+						TLSv1_2=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.2
+					else
+						# Variable que da el valor que tendrá TLSv1.2
+						TLSv1_2=0
+				fi		
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.3
+			grep "TLSv1.3" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.3
+					then
+						# Variable que da el valor que tendrá TLSv1.3
+						TLSv1_3=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.3
+					else
+						# Variable que da el valor que tendrá TLSv1.3
+						TLSv1_3=0
+				fi
+# Ejecuta una conexión contra la base de datos local y añade los datos extraídos del escaneo
+mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD $MYSQL_DATABASE << EOF
+INSERT INTO ips (\`IP\`, \`Puerto\`, \`SSLv2\`, \`SSLv3\`, \`TLSv1_0\`, \`TLSv1_1\`, \`TLSv1_2\`, \`TLSv1_3\`) VALUES ("$ip", "$https", "$SSLv2","$SSLv3", "$TLSv1_0","$TLSv1_1","$TLSv1_2", "$TLSv1_3");
+EOF
+
+			# Proceso de escaneo de las IPs encontradas en los ficheros proporcionados
+			scan_ip=$(nmap --script ssl-enum-ciphers -p $custom_https $ip 2> /dev/null)
+			# Mensaje informativo para que el usuario vea por pantalla las IPs escaneadas
+			echo "IP: $ip ___ Port: $custom_https"
+			# Comprobación que en el escaneo de la IP soporta el SSLv2
+			grep "SSLv2" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte SSLv2
+					then
+						# Variable que da el valor que tendrá SSLv2
+						SSLv2=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte SSLv2
+					else
+						# Variable que da el valor que tendrá SSLv2
+						SSLv2=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el SSLv3
+			grep "SSLv3" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte SSLv3
+					then
+						# Variable que da el valor que tendrá SSLv3
+						SSLv3=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte SSLv3
+					else
+						# Variable que da el valor que tendrá SSLv3
+						SSLv3=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.0
+			grep "TLSv1.0" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.0
+					then
+						# Variable que da el valor que tendrá TLSv1.0
+						TLSv1_0=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporta TLSv1.0
+					else
+						# Variable que da el valor que tendrá TLSv1.0
+						TLSv1_0=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.1
+			grep "TLSv1.1" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.1
+					then
+						# Variable que da el valor que tendrá TLSv1.1
+						TLSv1_1=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.1
+					else
+						# Variable que da el valor que tendrá TLSv1.1
+						TLSv1_1=0
+				fi
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.2
+			grep "TLSv1.2" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.2
+					then
+						# Variable que da el valor que tendrá TLSv1.2
+						TLSv1_2=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.2
+					else
+						# Variable que da el valor que tendrá TLSv1.2
+						TLSv1_2=0
+				fi		
+			# Comprobación que en el escaneo de la IP soporta el TLSv1.3
+			grep "TLSv1.3" <<< $scan_ip &> /dev/null
+				# Condición que comprueba la ejecución del comando anterior
+				if [[ $? = 0 ]]; 
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado si soporte TLSv1.3
+					then
+						# Variable que da el valor que tendrá TLSv1.3
+						TLSv1_3=1
+					# Acciones a realizar, en caso de que la IP escaneada por el puerto especificado NO soporte TLSv1.3
+					else
+						# Variable que da el valor que tendrá TLSv1.3
+						TLSv1_3=0
+				fi
+
+# Ejecuta una conexión contra la base de datos local y añade los datos extraídos del escaneo
+mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD $MYSQL_DATABASE << EOF
+INSERT INTO ips (\`IP\`, \`Puerto\`, \`SSLv2\`, \`SSLv3\`, \`TLSv1_0\`, \`TLSv1_1\`, \`TLSv1_2\`, \`TLSv1_3\`) VALUES ("$ip", "$custom_https", "$SSLv2","$SSLv3", "$TLSv1_0","$TLSv1_1","$TLSv1_2", "$TLSv1_3");
+EOF
+		done 2> /dev/null
+fi 2> /dev/null
